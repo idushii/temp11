@@ -1,0 +1,136 @@
+{% block element_product_listing %}
+    {# @var result \Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult #}
+    {% set searchResult = element.data.listing %}
+    {% set listingColumns = 'col-sm-6 col-lg-4 col-xl-3' %}
+
+    {% if section and section.type == 'sidebar' %}
+        {% set listingColumns = 'col-sm-6 col-lg-6 col-xl-4' %}
+    {% endif %}
+
+    {% set currentPage = ((searchResult.criteria.offset + 1) / searchResult.criteria.limit )|round(0, 'ceil') %}
+    {% set paginationConfig = { page: currentPage }|json_encode %}
+
+    {% set slot = page.cmsPage.firstElementOfType('product-listing') %}
+
+    {% set filterUrl = null %}
+    {% set dataUrl = null %}
+
+    {% if searchResult.currentFilters.navigationId %}
+        {% set filterUrl = url('frontend.cms.navigation.filter', { navigationId: searchResult.currentFilters.navigationId }) %}
+        {% set dataUrl = url('frontend.cms.navigation.page', { navigationId: searchResult.currentFilters.navigationId }) %}
+    {% endif %}
+
+    {% set sidebar = sectionType == 'sidebar' ? true : false %}
+    {% set params = { slots: slot.id } %}
+
+    <div class="cms-element-product-listing-wrapper"
+         data-listing-pagination="true"
+         data-listing-pagination-options='{{ paginationConfig }}'
+         data-listing="true"
+         data-listing-options='{
+             "sidebar": "{{ sidebar }}",
+             "params": {{ params|json_encode }},
+             "dataUrl": "{{ dataUrl }}",
+             "filterUrl": "{{ filterUrl }}",
+             "snippets": {
+                "resetAllButtonText": "{{ 'listing.filterPanelResetAll'|trans }}"
+             }
+         }'>
+        <div class="cms-element-product-listing">
+            {% if searchResult.total > 0 %}
+                {% block element_product_listing_pagination_nav_actions %}
+                    <div class="cms-element-product-listing-actions">
+                        {% block element_product_listing_pagination_nav_top %}
+                            {% sw_include '@Storefront/component/pagination.html.twig' with {
+                                entities: searchResult,
+                                criteria: searchResult.criteria
+                            } %}
+                        {% endblock %}
+
+                        {% block element_product_listing_sorting %}
+                            {% sw_include '@Storefront/component/sorting.html.twig' with { current: searchResult.sorting, sortings: searchResult.sortings } %}
+                        {% endblock %}
+                    </div>
+                {% endblock %}
+            {% endif %}
+
+            {% block element_product_listing_row %}
+                <div class="row cms-listing-row js-listing-wrapper">
+                    {% if searchResult.total > 0 %}
+                        {% block element_product_listing_col %}
+                            <table>
+                                {% for product in searchResult %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ seoUrl('frontend.detail.page', {'productId': product.id}) }}"
+                                                title="{{ product.translated.name }}">
+                                                {{ product.productNumber }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="{{ seoUrl('frontend.detail.page', {'productId': product.id}) }}"
+                                            title="{{ product.translated.name }}">
+                                                {{ product.translated.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="product-description">
+                                                <a href="{{ seoUrl('frontend.detail.page', {'productId': product.id}) }}"
+                                                    title="{{ product.translated.name }}">
+                                                    {{ product.translated.description|striptags }}
+                                                </a>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {{ product.purchaseUnit }} {{ product.unit.name }}x
+                                            {{ product.calculatedListingPrice.from.unitPrice|currency }}
+                                        </td>
+                                        <td>
+                                            {% set maxQuantity = shopware.config.core.cart.maxQuantity %}
+
+                                            <select name="lineItems[{{ product.id }}][quantity]"
+                                                    class="custom-select product-detail-quantity-select">
+                                                {% for quantity in range(product.minPurchase, maxQuantity, product.purchaseSteps) %}
+                                                    <option value="{{ quantity }}">
+                                                        {{ quantity }}{% if product.packUnit %} {{ product.packUnit }}{% endif %}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+
+                                            {% block component_product_box_action %}
+                                                {% sw_include '@Storefront/component/product/card/action.html.twig' %}
+                                            {% endblock %}
+                                        </td>
+
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        {% endblock %}
+                    {% else %}
+                        {% block element_product_listing_col_empty %}
+                            <div class="cms-listing-col col-12">
+                                {% block element_product_listing_col_empty_alert %}
+                                    {% sw_include '@Storefront/utilities/alert.html.twig' with {
+                                        type: 'info',
+                                        content: 'listing.emptyResultMessage'|trans
+                                    } %}
+                                {% endblock %}
+                            </div>
+                        {% endblock %}
+                    {% endif %}
+                </div>
+            {% endblock %}
+
+            {% if searchResult.total > 0 %}
+                {% block element_product_listing_pagination_nav_bottom %}
+                    {% sw_include '@Storefront/component/pagination.html.twig' with {
+                        entities: searchResult,
+                        criteria: searchResult.criteria
+                    } %}
+                {% endblock %}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
